@@ -6,9 +6,11 @@
 #include <math.h>
 #include <bits/stdc++.h>
 #include <fstream>
+#include <string> 
 // phien ban chinh thuc
 // leak memory ở hàm innit và copy_board
 // nhưng 2 hàm là của thầy nên viết thêm hàm copyboard để dùng riêng
+// init depth = 1 cho alpha-beta
 using namespace std;
 struct Position
 {
@@ -57,7 +59,14 @@ void print_board(int **board)
         cout << endl;
     }
 }
-
+void deleteBoard(int **board)
+{
+    for (int i = 0; i < 5; i++)
+    {
+        delete[] board[i];
+    }
+    delete[] board;
+}
 int **init_board()
 {
     int **t = new int *[5];
@@ -161,6 +170,24 @@ int **copy_board(int **board)
         }
     }
     return n_b;
+}
+
+void copyBoard(int **board, int **newBoard)
+{
+
+    // for (int j = 0; j < 5; j++)
+    // {
+    //     newBoard[i][j] = 0;
+    // }
+    // }
+    for (int i = 0, j = 0; i < 5; i++, j++)
+    {
+        for (int j = 0; j < 5; j++)
+        {
+            // cout << i << " " << j << endl;
+            newBoard[i][j] = board[i][j];
+        }
+    }
 }
 void gen_move(Position pop_start, int **board, vector<Position> &dest_list)
 {
@@ -428,7 +455,13 @@ vector<Position> vay(int **board, Move m, int player)
     vector<Position> DSvayCheck;
     vector<Position> ganhList;
     bool flag;
-    int **nextBoard = copy_board(board);
+    // int **nextBoard = copy_board(board);
+    int **nextBoard = new int *[5];
+    for (int i = 0; i < 5; i++)
+    {
+        nextBoard[i] = new int[5];
+    }
+    copyBoard(board, nextBoard);
     ganhList = ganh(board, m, player);
     if (!ganhList.empty())
     {
@@ -480,12 +513,7 @@ vector<Position> vay(int **board, Move m, int player)
         }
         DSvayCheck.clear();
     }
-    for (int i = 0; i < 5; i++)
-    {
-        delete[] nextBoard[i];
-    }
-    // nextBoard = nullptr;
-    // delete nextBoard;
+    deleteBoard(nextBoard);
 
     return DSvayTotal;
 };
@@ -701,7 +729,7 @@ public:
     {
         clock_t end = clock();
         double totalTime = double(end - start) / double(CLOCKS_PER_SEC);
-        if (totalTime > 1)
+        if (totalTime > 2.5)
             // chuan totalTime >0.7 or nho hon 1 xiu
             return true;
         return false;
@@ -718,23 +746,27 @@ public:
             bestValue = 99999;
         }
         int beta = 99999;
+
         vector<Move> bestMoves;
         vector<Move> movesList = get_valid_moves(current_board, pre_board, player);
         //
         int doiThu = demQuan(current_board, -player);
+        //set lai moveList cho toi gian hon
         if (doiThu == 1)
         {
-            Position DTpos = viTriDoiThu(current_board,-player);
+            Position DTpos = viTriDoiThu(current_board, -player);
             vector<Move>::iterator i = movesList.begin();
             vector<Move> newMovesList;
             for (; i != movesList.end(); ++i)
             {
                 Move checkMove = *i;
-                if ((checkMove.pos_start.x <= (DTpos.x+2) && checkMove.pos_start.x >= (DTpos.x-2)) && (checkMove.pos_start.y <= (DTpos.y+2) && checkMove.pos_start.y >= (DTpos.y-2))){
+                if ((checkMove.pos_start.x <= (DTpos.x + 2) && checkMove.pos_start.x >= (DTpos.x - 2)) && (checkMove.pos_start.y <= (DTpos.y + 2) && checkMove.pos_start.y >= (DTpos.y - 2)))
+                {
                     newMovesList.push_back(checkMove);
                 }
             }
-            if(!newMovesList.empty()){
+            if (!newMovesList.empty())
+            {
                 movesList = newMovesList;
             }
         }
@@ -751,7 +783,11 @@ public:
         }
         int depth = 1;
         vector<Move>::iterator i = movesList.begin();
-        int **newBoard;
+        int **newBoard = new int *[5];
+        for (int i = 0; i < 5; i++)
+        {
+            newBoard[i] = new int[5];
+        }
         int value;
         // double totalTime = 0;
         vector<int> bestValueList;
@@ -764,17 +800,16 @@ public:
 
             for (; i != movesList.end(); ++i)
             {
-                newBoard = copy_board(current_board);
+                // newBoard = copy_board(current_board);
+                // int **nextBoard;
+                copyBoard(current_board, newBoard);
+                // cout << "Ok";
                 act_move(newBoard, *i, player);
                 if (player == 1)
                 {
                     value = get_min(newBoard, current_board, bestValue, beta, depth - 1, -player);
                     // newBoard = nullptr;
                     // delete newBoard;
-                    for (int i = 0; i < 5; i++)
-                    {
-                        delete[] newBoard[i];
-                    }
 
                     if (value >= bestValue)
                     {
@@ -786,6 +821,7 @@ public:
                     {
                         bestMoves.clear();
                         bestMoves.push_back(*i);
+                        deleteBoard(newBoard);
                         return bestMoves;
                     }
                 }
@@ -795,10 +831,11 @@ public:
                     value = get_max(newBoard, current_board, bestValue, beta, depth - 1, -player);
                     // newBoard = nullptr;
                     // delete newBoard;
-                    for (int i = 0; i < 5; i++)
-                    {
-                        delete[] newBoard[i];
-                    }
+                    // for (int i = 0; i < 5; i++)
+                    // {
+                    //     delete[] newBoard[i];
+                    // }
+                    // delete[] newBoard;
                     if (value <= bestValue)
                     {
                         bestValue = value;
@@ -809,11 +846,13 @@ public:
                     {
                         bestMoves.clear();
                         bestMoves.push_back(*i);
+                        deleteBoard(newBoard);
                         return bestMoves;
                     }
                 }
             }
             depth += 1;
+            cout<<"next Depth: "<<depth<<endl;
         }
 
         i = bestMoves.begin();
@@ -828,39 +867,43 @@ public:
             ++j;
         }
         // cout << "bestValue: " << bestValue << endl;
+        deleteBoard(newBoard);
         return chooseBestMove;
     }
     int get_min(int **current_board, int **pre_board, int alpha, int beta, int depth, int player)
     {
-        if (depth == 0)
+        if (depth == 0 || timeOut())
         {
             return getValue(current_board, pre_board, -player);
         }
         int value = 99999;
-        int **newBoard;
+        int **newBoard = new int *[5];
+        for (int i = 0; i < 5; i++)
+        {
+            newBoard[i] = new int[5];
+        }
         int getMax;
         int soQuanAn;
         vector<Move> movesList = get_valid_moves(current_board, pre_board, player);
         vector<Move>::iterator i = movesList.begin();
         for (; i != movesList.end(); ++i)
         {
-            newBoard = copy_board(current_board);
+            // newBoard = copy_board(current_board);
+            copyBoard(current_board, newBoard);
             act_move(newBoard, *i, player);
             soQuanAn = anQuan(player, newBoard, current_board) * player;
             getMax = get_max(newBoard, current_board, alpha, beta, depth - 1, -player);
             getMax = soQuanAn + getMax;
             // newBoard = nullptr;
             // delete newBoard;
-            for (int i = 0; i < 5; i++)
-            {
-                delete[] newBoard[i];
-            }
+
             if (value > getMax)
             {
                 value = getMax;
             }
             if (value <= alpha)
             {
+                deleteBoard(newBoard);
                 return value;
             }
             if (beta > value)
@@ -872,24 +915,30 @@ public:
                 break;
             }
         }
+        deleteBoard(newBoard);
         return value;
     }
     int get_max(int **current_board, int **pre_board, int alpha, int beta, int depth, int player)
     {
 
-        if (depth == 0)
+        if (depth == 0 || timeOut())
         {
             return getValue(current_board, pre_board, -player);
         }
         int value = -99999;
-        int **newBoard;
+        int **newBoard = new int *[5];
+        for (int i = 0; i < 5; i++)
+        {
+            newBoard[i] = new int[5];
+        }
         int getMin;
         int soQuanAn;
         vector<Move> movesList = get_valid_moves(current_board, pre_board, player);
         vector<Move>::iterator i = movesList.begin();
         for (; i != movesList.end(); ++i)
         {
-            newBoard = copy_board(current_board);
+            // newBoard = copy_board(current_board);
+            copyBoard(current_board, newBoard);
             act_move(newBoard, *i, player);
             soQuanAn = anQuan(player, newBoard, current_board) * player;
             getMin = get_min(newBoard, current_board, alpha, beta, depth - 1, -player);
@@ -897,16 +946,18 @@ public:
 
             // newBoard = nullptr;
             // delete newBoard;
-            for (int i = 0; i < 5; i++)
-            {
-                delete[] newBoard[i];
-            }
+            // for (int i = 0; i < 5; i++)
+            // {
+            //     delete[] newBoard[i];
+            // }
+
             if (value < getMin)
             {
                 value = getMin;
             }
             if (value >= beta)
             {
+                deleteBoard(newBoard);
                 return value;
             }
             if (beta < value)
@@ -918,6 +969,7 @@ public:
                 break;
             }
         }
+        deleteBoard(newBoard);
         return value;
     }
     int getValue(int **current_board, int **pre_board, int player)
@@ -979,11 +1031,11 @@ public:
             {
                 if (board[i][j] == player)
                 {
-                    return Position(i,j);
+                    return Position(i, j);
                 }
             }
         }
-        return Position(1,2);
+        return Position(1, 2);
         //chac chan ko bao gio xay ra truong hop nay , nhung vay them vao de tranh warning
     }
 };
@@ -1002,7 +1054,7 @@ Move select_move(int **current_board, int **previous_board, int player)
 };
 string play(int first)
 {
-    int count = 0, limit = 70;
+    int count = 0, limit = 50;
     int player;
     if (first == 1)
         player = 1;
@@ -1059,6 +1111,7 @@ string play(int first)
                 int index = rand() % valid_moves.size();
                 Move new_move = valid_moves[index];
                 pre_board = copy_board(board);
+                // copyBoard(board,pre_board);
                 act_move(board, new_move, player);
                 cout << "player: " << player << " count: " << count << endl;
                 print_board(board);
@@ -1073,13 +1126,20 @@ string play(int first)
             }
             else
             {
+                clock_t start = clock();
+
                 Move m = select_move(board, pre_board, player);
+
                 cout << "best move: [" << m.pos_start.x << "," << m.pos_start.y << "] -> "
                      << "[" << m.pos_end.x << "," << m.pos_end.y << "]" << endl;
                 pre_board = copy_board(board);
+                // copyBoard(board,pre_board);
                 act_move(board, m, player);
                 cout << "player: " << player << " count: " << count << endl;
                 print_board(board);
+                clock_t end = clock();
+                double totalTime = double(end - start) / double(CLOCKS_PER_SEC);
+                cout << "Time: " << totalTime << endl;
 
                 // srand(time(NULL));
                 // int index = rand() % valid_moves.size();
@@ -1095,7 +1155,7 @@ string play(int first)
             break;
         player *= -1;
     }
-    if (count == 70)
+    if (count == 50)
     {
         int x = countDie(board, 1);
         int o = countDie(board, -1);
@@ -1104,31 +1164,23 @@ string play(int first)
         // pre_board = nullptr;
         // delete board;
         // delete pre_board;
-        for (int i = 0; i < 5; i++)
-        {
-            delete[] board[i];
-            delete[] pre_board[i];
-        }
-
+        deleteBoard(board);
+        deleteBoard(pre_board);
         if (x > o)
-            return "hoa";
-        return "hoa";
+            return "hoa // thang";
+        return "hoa // thua";
     }
     // board = nullptr;
     // pre_board = nullptr;
     // delete board;
     // delete pre_board;
-    for (int i = 0; i < 5; i++)
-    {
-        delete[] board[i];
-        delete[] pre_board[i];
-    }
-
+    deleteBoard(board);
+    deleteBoard(pre_board);
     if (player == -1)
     {
-        return "thang";
+        return "thang ,count: " + to_string(count);
     }
-    return "thua";
+    return "thua ,count: " + to_string(count);
 }
 
 int writeFile(int i, string s)
@@ -1146,7 +1198,7 @@ int main()
     // {
     //     thang += play(-1);
     // }
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 100; i++)
     {
         cout << i << endl;
         string s = play(1);
